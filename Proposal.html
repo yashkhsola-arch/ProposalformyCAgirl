@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>For My Queen 👑</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<style>
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:linear-gradient(135deg,#ff4d6d,#ff9a9e,#ffc3a0);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-family:'Segoe UI',sans-serif;
+  overflow:hidden;
+  padding:18px;
+}
+
+/* CARD */
+.card{
+  width:94%;
+  max-width:440px;
+  max-height:95vh;
+  background:#fff;
+  border-radius:22px;
+  padding:20px;
+  text-align:center;
+  box-shadow:0 20px 45px rgba(0,0,0,0.25);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  position:relative;
+}
+
+/* TEXT */
+h1,h2{
+  color:#ff2f5b;
+  font-size:22px;
+  margin:10px 0;
+}
+p{
+  font-size:16px;
+  line-height:1.7;
+  margin:10px 0;
+}
+.emoji{font-size:26px}
+.note{font-size:13px;opacity:0.75;margin-top:8px}
+
+/* BUTTONS */
+.btn{
+  display:block;
+  width:100%;
+  margin:12px 0;
+  padding:14px 0;
+  font-size:17px;
+  border:none;
+  border-radius:30px;
+  cursor:pointer;
+  font-weight:800;
+}
+.yes{background:#ff2f5b;color:#fff;}
+.no{background:#e5e5e5;color:#555;}
+
+/* NO BUTTON BHAGNA */
+.runaway{ position:relative; }
+
+/* QUIZ */
+.quizBox{
+  margin-top:16px;
+  padding:14px;
+  background: rgba(255,47,91,0.06);
+  border: 1px solid rgba(255,47,91,0.16);
+  border-radius:18px;
+  text-align:left;
+}
+.qTitle{
+  font-weight:900;
+  margin-bottom:10px;
+  color:#111;
+  font-size:15px;
+}
+.opt{
+  padding:12px;
+  border-radius:14px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.08);
+  cursor:pointer;
+  font-weight:800;
+  margin-bottom:10px;
+  transition:0.18s ease;
+}
+.opt:hover{ transform: translateY(-1px); }
+
+/* GIFT */
+.gift{
+  width:120px;
+  height:120px;
+  margin:20px auto;
+  background:#ff2f5b;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:46px;
+  cursor:pointer;
+  animation:pulse 1.3s infinite;
+  user-select:none;
+}
+@keyframes pulse{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.1);}
+  100%{transform:scale(1);}
+}
+
+/* PHOTOS */
+.photo-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin-top:16px;
+}
+.photo-wrap img{
+  width:100%;
+  max-height:75vh;
+  object-fit:contain;
+  border-radius:18px;
+  background:#000;
+}
+
+/* FIREWORKS */
+.firework{
+  position:absolute;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  animation:explode 1.2s ease-out forwards;
+  pointer-events:none;
+  z-index:9999;
+}
+@keyframes explode{
+  to{
+    transform:translate(var(--x),var(--y));
+    opacity:0;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="card" id="box"></div>
+
+<script>
+/* ✅ Your Firebase Realtime Database URL */
+const DB_URL = "https://for-my-6540f-default-rtdb.firebaseio.com";
+
+/* ✅ Unique visitor id */
+const visitorId = localStorage.getItem("visitorId") || ("v_" + Math.random().toString(16).slice(2));
+localStorage.setItem("visitorId", visitorId);
+
+/* ✅ Save click/answer */
+function track(type, page, value){
+  const data = {
+    visitorId,
+    type,         // "click" or "quiz"
+    page,
+    value,
+    time: new Date().toISOString(),
+    userAgent: navigator.userAgent
+  };
+
+  fetch(`${DB_URL}/clicks.json`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  }).catch(()=>{});
+}
+
+/* 🎆 FIREWORKS */
+function fireworks(){
+  for(let i=0;i<6;i++){
+    setTimeout(()=>{
+      const x = Math.random() * window.innerWidth;
+      const y = Math.random() * (window.innerHeight/2);
+
+      for(let j=0;j<28;j++){
+        const f = document.createElement("div");
+        f.className = "firework";
+        f.style.left = x + "px";
+        f.style.top  = y + "px";
+        f.style.background = `hsl(${Math.random()*360},100%,60%)`;
+        f.style.setProperty("--x", (Math.random()*220-110) + "px");
+        f.style.setProperty("--y", (Math.random()*220-110) + "px");
+        document.body.appendChild(f);
+        setTimeout(()=>f.remove(), 1200);
+      }
+    }, i*420);
+  }
+}
+
+/* NO BUTTON MOVE */
+function runaway(btn){
+  track("click","NoButton","RUNAWAY");
+  btn.style.transform = `translate(${Math.random()*60-30}px,${Math.random()*28}px)`;
+}
+
+const box = document.getElementById("box");
+let loveNoUsed = false;
+
+/* Quiz questions */
+let qIndex = 0;
+const quiz = [
+  { q:"Tumhari favourite vibe? 🌸", a:["Cute", "Romantic", "Both 💖"] },
+  { q:"First date idea? 😳", a:["Ice cream 🍦", "Coffee ☕", "Long walk 🚶‍♀️"] },
+  { q:"Tumhe kya pasand? 🤍", a:["Respect", "Care", "Loyalty"] },
+  { q:"One word for me? 😅", a:["Sweet", "Cute", "Different ✨"] }
+];
+
+/* PAGE 1 */
+function page1(){
+  box.innerHTML = `
+    <h2>Kya main tumhare liye special hoon? 🤍</h2>
+    <p class="emoji">🌸✨</p>
+
+    <button class="btn yes" onclick="track('click','Page1','YES'); page2()">YES</button>
+    <button class="btn no runaway" onclick="track('click','Page1','NO'); runaway(this)">NO</button>
+
+    <p class="note">(Answer honestly 🤍)</p>
+  `;
+}
+
+/* PAGE 2 */
+function page2(){
+  box.innerHTML = `
+    <h2>Kya tum mujhe apni life me jagah de sakti ho? 🌷</h2>
+    <p class="emoji">🤍🫶</p>
+
+    <button class="btn yes" onclick="track('click','Page2','YES'); quizPage()">YES</button>
+    <button class="btn no runaway" onclick="track('click','Page2','NO'); runaway(this)">NO</button>
+  `;
+}
+
+/* QUIZ PAGE */
+function quizPage(){
+  qIndex = 0;
+  track("click","QuizPage","OPEN");
+  renderQuiz();
+}
+
+function renderQuiz(){
+  const q = quiz[qIndex];
+
+  box.innerHTML = `
+    <h2>Mini Quiz Time 😳</h2>
+    <p>Bas fun hai… but answers cute hain 💖</p>
+    <p class="emoji">📝✨</p>
+
+    <div class="quizBox">
+      <div class="qTitle">Q${qIndex+1}. ${q.q}</div>
+      <div id="opts"></div>
+    </div>
+
+    <p class="note">Tap one option 👆</p>
+  `;
+
+  const opts = document.getElementById("opts");
+
+  q.a.forEach(ans=>{
+    const div = document.createElement("div");
+    div.className = "opt";
+    div.innerText = ans;
+    div.onclick = ()=>{
+      track("quiz", `Q${qIndex+1}`, ans);
+
+      qIndex++;
+      if(qIndex >= quiz.length){
+        loveQ();
+      }else{
+        renderQuiz();
+      }
+    };
+    opts.appendChild(div);
+  });
+}
+
+/* LOVE QUESTION */
+function loveQ(){
+  box.innerHTML=`
+    <h2>Do you like me? 🤍</h2>
+    <p class="emoji">❤️‍🩹✨</p>
+
+    <button class="btn yes" onclick="track('click','LoveQ','YES'); giftPage()">YES</button>
+    <button class="btn no" id="noLove">NO</button>
+
+    <p class="note">(No pressure 🤍)</p>
+  `;
+
+  const n = document.getElementById("noLove");
+  n.onclick = ()=>{
+    track("click","LoveQ","NO");
+    if(!loveNoUsed){
+      loveNoUsed=true;
+      n.innerText="NO 😔";
+      n.style.background="#ccc";
+    }else{
+      n.disabled=true;
+      n.style.opacity="0.6";
+    }
+  };
+}
+
+/* GIFT */
+function giftPage(){
+  box.innerHTML=`
+    <h2>Tap the Gift 🎁</h2>
+    <p class="emoji">🤍✨</p>
+    <div class="gift" onclick="track('click','Gift','OPEN'); finalWish()">🎁</div>
+    <p class="note">(Secret inside 😳)</p>
+  `;
+}
+
+/* FINAL */
+function finalWish(){
+  box.innerHTML=`
+    <h1>For My Queen 👑💖</h1>
+    <p>
+      Main tumhe impress nahi…<br>
+      respect aur care dena chahta hoon 🤍<br><br>
+      <b>Will you be mine? 💍</b>
+    </p>
+
+    <button class="btn yes" onclick="track('click','Final','YES'); yesAccepted()">YES ❤️</button>
+    <button class="btn no" onclick="track('click','Final','NO'); noAccepted()">NO</button>
+
+    <p class="emoji">💖✨</p>
+  `;
+}
+
+/* YES */
+function yesAccepted(){
+  fireworks();
+  track("click","Fireworks","START");
+
+  box.innerHTML=`
+    <h1>She said YES 💖✨</h1>
+    <p class="emoji">🥺❤️</p>
+    <p>
+      Thank you… ab tum meri ho 🤍<br><br>
+      (✅ Tumhare clicks + quiz answers save ho gaye)
+    </p>
+
+    <button class="btn yes" onclick="track('click','Memories','OPEN'); showPhotos()">Tap to see memories 📸🤍</button>
+    <p class="emoji">🎉✨👑</p>
+  `;
+}
+
+/* PHOTOS PAGE (3 photos) */
+function showPhotos(){
+  fireworks();
+  track("click","Photos","OPEN");
+
+  box.innerHTML = `
+    <h2>Memories 📸🤍</h2>
+    <p class="emoji">🌙✨</p>
+
+    <div class="photo-wrap">
+      <img src="1.jpg" alt="photo 1">
+      <img src="2.jpg" alt="photo 2">
+      <img src="3.jpg" alt="photo 3">
+    </div>
+
+    <p class="emoji">💖👑✨</p>
+  `;
+}
+
+/* NO */
+function noAccepted(){
+  box.innerHTML=`
+    <h2>It’s okay 🤍</h2>
+    <p class="emoji">🌙</p>
+    <p>Main tumhari choice respect karta hoon 🤝</p>
+    <button class="btn yes" onclick="track('click','Back','Restart'); page1()">Go back</button>
+  `;
+}
+
+page1();
+</script>
+
+</body>
+</html>
